@@ -88,8 +88,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void _move(Direction direction) {
     if (gameOver) return;
     
+    // 深拷贝当前网格状态用于比较
     List<List<int>> oldGrid = List.generate(
-      gridSize, (i) => List.from(grid[i]),
+      gridSize, (i) => List.generate(gridSize, (j) => grid[i][j]),
     );
     mergedTiles.clear();
     bool moved = false;
@@ -109,7 +110,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         break;
     }
 
-    if (moved) {
+    // 检查网格是否真的发生了变化
+    bool gridChanged = false;
+    for (int i = 0; i < gridSize; i++) {
+      for (int j = 0; j < gridSize; j++) {
+        if (oldGrid[i][j] != grid[i][j]) {
+          gridChanged = true;
+          break;
+        }
+      }
+      if (gridChanged) break;
+    }
+
+    // 只有在网格真正改变时才添加新方块
+    if (moved && gridChanged) {
       _addRandomTile();
       if (!_canMove()) {
         gameOver = true;
@@ -124,30 +138,40 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _moveLeft() {
     bool moved = false;
     for (int i = 0; i < gridSize; i++) {
-      List<int> row = grid[i].where((cell) => cell != 0).toList();
-      List<int> newRow = [];
-      int skip = -1;
+      // 获取非零元素
+      List<int> row = [];
+      for (int j = 0; j < gridSize; j++) {
+        if (grid[i][j] != 0) {
+          row.add(grid[i][j]);
+        }
+      }
       
+      // 合并相同的数字
+      List<int> newRow = [];
       for (int j = 0; j < row.length; j++) {
-        if (j == skip) continue;
         if (j + 1 < row.length && row[j] == row[j + 1]) {
           int merged = row[j] * 2;
           newRow.add(merged);
           score += merged;
-          skip = j + 1;
+          j++; // 跳过下一个已合并的元素
           moved = true;
         } else {
           newRow.add(row[j]);
         }
       }
       
+      // 填充剩余位置为0
       while (newRow.length < gridSize) {
         newRow.add(0);
       }
       
-      if (grid[i].toString() != newRow.toString()) {
-        moved = true;
+      // 检查这一行是否发生了变化
+      for (int j = 0; j < gridSize; j++) {
+        if (grid[i][j] != newRow[j]) {
+          moved = true;
+        }
       }
+      
       grid[i] = newRow;
     }
     return moved;
@@ -156,30 +180,40 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _moveRight() {
     bool moved = false;
     for (int i = 0; i < gridSize; i++) {
-      List<int> row = grid[i].where((cell) => cell != 0).toList();
-      List<int> newRow = [];
-      int skip = -1;
+      // 获取非零元素
+      List<int> row = [];
+      for (int j = 0; j < gridSize; j++) {
+        if (grid[i][j] != 0) {
+          row.add(grid[i][j]);
+        }
+      }
       
+      // 从右向左合并相同的数字
+      List<int> newRow = [];
       for (int j = row.length - 1; j >= 0; j--) {
-        if (j == skip) continue;
         if (j - 1 >= 0 && row[j] == row[j - 1]) {
           int merged = row[j] * 2;
           newRow.insert(0, merged);
           score += merged;
-          skip = j - 1;
+          j--; // 跳过下一个已合并的元素
           moved = true;
         } else {
           newRow.insert(0, row[j]);
         }
       }
       
+      // 在左侧填充0
       while (newRow.length < gridSize) {
         newRow.insert(0, 0);
       }
       
-      if (grid[i].toString() != newRow.toString()) {
-        moved = true;
+      // 检查这一行是否发生了变化
+      for (int j = 0; j < gridSize; j++) {
+        if (grid[i][j] != newRow[j]) {
+          moved = true;
+        }
       }
+      
       grid[i] = newRow;
     }
     return moved;
@@ -188,31 +222,34 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _moveUp() {
     bool moved = false;
     for (int j = 0; j < gridSize; j++) {
+      // 获取非零元素
       List<int> column = [];
       for (int i = 0; i < gridSize; i++) {
-        if (grid[i][j] != 0) column.add(grid[i][j]);
+        if (grid[i][j] != 0) {
+          column.add(grid[i][j]);
+        }
       }
       
+      // 合并相同的数字
       List<int> newColumn = [];
-      int skip = -1;
-      
       for (int i = 0; i < column.length; i++) {
-        if (i == skip) continue;
         if (i + 1 < column.length && column[i] == column[i + 1]) {
           int merged = column[i] * 2;
           newColumn.add(merged);
           score += merged;
-          skip = i + 1;
+          i++; // 跳过下一个已合并的元素
           moved = true;
         } else {
           newColumn.add(column[i]);
         }
       }
       
+      // 填充剩余位置为0
       while (newColumn.length < gridSize) {
         newColumn.add(0);
       }
       
+      // 检查这一列是否发生了变化并更新网格
       for (int i = 0; i < gridSize; i++) {
         if (grid[i][j] != newColumn[i]) {
           moved = true;
@@ -226,31 +263,34 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool _moveDown() {
     bool moved = false;
     for (int j = 0; j < gridSize; j++) {
+      // 获取非零元素
       List<int> column = [];
       for (int i = 0; i < gridSize; i++) {
-        if (grid[i][j] != 0) column.add(grid[i][j]);
+        if (grid[i][j] != 0) {
+          column.add(grid[i][j]);
+        }
       }
       
+      // 从下向上合并相同的数字
       List<int> newColumn = [];
-      int skip = -1;
-      
       for (int i = column.length - 1; i >= 0; i--) {
-        if (i == skip) continue;
         if (i - 1 >= 0 && column[i] == column[i - 1]) {
           int merged = column[i] * 2;
           newColumn.insert(0, merged);
           score += merged;
-          skip = i - 1;
+          i--; // 跳过下一个已合并的元素
           moved = true;
         } else {
           newColumn.insert(0, column[i]);
         }
       }
       
+      // 在顶部填充0
       while (newColumn.length < gridSize) {
         newColumn.insert(0, 0);
       }
       
+      // 检查这一列是否发生了变化并更新网格
       for (int i = 0; i < gridSize; i++) {
         if (grid[i][j] != newColumn[i]) {
           moved = true;
